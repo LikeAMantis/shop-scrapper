@@ -3,12 +3,15 @@ import Scrapper from './Scrapper.js'
 // Spar
 async function startSparScrapper() {
     const sparScrapper = new Scrapper({
-        itemWrappers: ".productGrid .productBox:not(.disruptiveProductBox)",
-        nextBtn: "li.next:not(.disabled) a",
         name: (itemWrapper) => Array.from(itemWrapper.querySelectorAll(".productInfo a")).map(x => x.innerText).reduce((x, y) => x + " " + y).trimEnd().replaceAll(",", ""),
         price: (itemWrapper) => itemWrapper.querySelector(".priceInteger").innerText + "." + itemWrapper.querySelector(".priceDecimal").innerText,
         imgUrl: (itemWrapper) => itemWrapper.querySelector("img").src,
-    });
+    }, 
+    {
+        itemWrappers: ".productGrid .productBox:not(.disruptiveProductBox)",
+        nextBtn: "li.next:not(.disabled) a",
+    }
+    );
 
     sparScrapper.createCSV("spar/spar_test");
     await sparScrapper.openBrowser();

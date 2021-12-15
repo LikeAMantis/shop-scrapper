@@ -2,25 +2,22 @@ import pkg from 'puppeteer';
 import { appendFile } from 'fs';
 
 export default class Scrapper {
-    constructor(selectors) {
-      this.selectors = {
-          name: () => "",
-          price: () => "",
-          imgUrl: () => "",
-          ...selectors,
-        };
+    constructor(selectors, selectorStrings) {
+      this.selectors = selectors;
+      this.properties = Object.keys(selectors);
+      this.selectorStrings = selectorStrings;
       this.id = 0;
     }
 
     createCSV(categorie) { 
         this.categorie = categorie; 
-        appendFile(`./data/${this.categorie}.csv`, `Id,Name,Price,ImgUrl`, function (err) {
+        appendFile(`./data/${this.categorie}.csv`, "Id," + this.properties.map(x => x[0].toUpperCase() + x.substr(1)).join(","), function (err) {
             if (err) console.log(err);
         });
     }
 
     async openBrowser() {
-        this.browser = await pkg.launch({ headless: true, devtools: false, args: [`--window-size=1920,1080`], defaultViewport: false });
+        this.browser = await pkg.launch({ headless: false, devtools: true, args: [`--window-size=1920,1080`], defaultViewport: false });
         this.page = await this.browser.newPage();
         
     }
@@ -29,16 +26,15 @@ export default class Scrapper {
         await this.page.goto(url);
 
         // Setup Functions
-        this.selectors = {
-            ...this.selectors,
-            name: this.selectors.name.toString(),
-            price: this.selectors.price.toString(),
-            imgUrl: this.selectors.imgUrl.toString(),
+        for (var key in this.selectors) {
+            this.selectors[key] = this.selectors[key].toString();
         }
+
         await this.page.evaluate((selectors) => {
-            window.selectName = new Function(`return ${selectors.name}`)();
-            window.selectPrice = new Function(`return ${selectors.price}`)();
-            window.selectImgUrl = new Function(`return ${selectors.imgUrl}`)();
+            console.log(selectors);
+            for (var key in selectors) {
+                window[key] = new Function(`return ${selectors[key]}`)();
+            }
         }, this.selectors)
     }
 
@@ -51,7 +47,7 @@ export default class Scrapper {
             try {
                 await Promise.all([
                     this.page.waitForNavigation(),
-                    this.page.evaluate((nextBtn) => document.querySelector(nextBtn).click(), this.selectors.nextBtn),
+                    this.page.evaluate((nextBtn) => document.querySelector(nextBtn).click(), this.selectorStrings.nextBtn),
                 ]);
             } catch (error) {
                 // console.log(error);
@@ -74,27 +70,28 @@ export default class Scrapper {
         await this.page.waitForTimeout(500);
         
         console.log("scrapping Page...");
-        var itemWrappers = await this.page.$$(this.selectors.itemWrappers);
+        var itemWrappers = await this.page.$$(this.selectorStrings.itemWrappers);
     
         for (let wrapper of itemWrappers) {
             var item = await this.getItem(wrapper);
       
-            appendFile(`./data/${this.categorie}.csv`, `\n${++this.id},${item.name},${item.price},${item.imgUrl}`, function (err) {
+            appendFile(`./data/${this.categorie}.csv`, `\n${++this.id},${this.properties.map(x => selectors[x]).join(",")}`, function (err) {
                 if (err) console.log(err);
             });
         }
     }
     
     async getItem(wrapper) {
-        let item = await this.page.evaluate((wrapper) => {
+        let item = await this.page.evaluate((wrapper, properties) => {
             var item = {}
-    
-            item.name = window.selectName(wrapper);
-            item.price = window.selectPrice(wrapper);
-            item.imgUrl = window.selectImgUrl(wrapper);
-    
+          
+            for (var prop of properties) {
+                debugger;
+                item[prop] = window[prop](wrapper);
+            }
+
             return item;
-        }, wrapper);
+        }, wrapper, this.properties);
     
         return item;
     }
