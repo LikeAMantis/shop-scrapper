@@ -1,11 +1,13 @@
 import pkg from 'puppeteer';
 import { appendFile } from 'fs';
+import { myFunc } from "test.js"
 
 export default class Scrapper {
-    constructor(selectors, selectorStrings) {
+    constructor(selectorStrings, selectors) {
       this.selectors = selectors;
-      this.properties = Object.keys(selectors);
       this.selectorStrings = selectorStrings;
+      this.properties = Object.keys(selectors);
+      this.funcPrefix = "getProp_";
       this.id = 0;
     }
 
@@ -17,9 +19,8 @@ export default class Scrapper {
     }
 
     async openBrowser() {
-        this.browser = await pkg.launch({ headless: false, devtools: true, args: [`--window-size=1920,1080`], defaultViewport: false });
-        this.page = await this.browser.newPage();
-        
+        this.browser = await pkg.launch({ headless: true, devtools: false, args: [`--window-size=1920,1080`], defaultViewport: false });
+        this.page = await this.browser.newPage();   
     }
 
     async goToPage(url) {
@@ -30,12 +31,17 @@ export default class Scrapper {
             this.selectors[key] = this.selectors[key].toString();
         }
 
-        await this.page.evaluate((selectors) => {
-            console.log(selectors);
+        await this.page.evaluate((selectors, prefix) => {
+
             for (var key in selectors) {
-                window[key] = new Function(`return ${selectors[key]}`)();
+                var funcStr = "return " + selectors[key];
+                window[(prefix + key)] = new Function(funcStr)();
             }
-        }, this.selectors)
+        }, this.selectors, this.funcPrefix)
+    }
+
+    async getMultipleCategories() {
+        await myFunc();
     }
 
     async getCategorie() {
@@ -50,11 +56,10 @@ export default class Scrapper {
                     this.page.evaluate((nextBtn) => document.querySelector(nextBtn).click(), this.selectorStrings.nextBtn),
                 ]);
             } catch (error) {
-                // console.log(error);
                 break;
             }
         }
-        console.log("Finished");
+        console.log("Finished!");
     };
     
     async getPage() {
@@ -63,8 +68,8 @@ export default class Scrapper {
             const distance = 250;
             const delay = 100;
             while (document.scrollingElement.scrollTop + window.innerHeight < document.scrollingElement.scrollHeight) {
-              document.scrollingElement.scrollBy(0, distance);
-              await new Promise(resolve => { setTimeout(resolve, delay); });
+                document.scrollingElement.scrollBy(0, distance);
+                await new Promise(resolve => { setTimeout(resolve, delay); });
             }
         })
         await this.page.waitForTimeout(500);
@@ -75,23 +80,22 @@ export default class Scrapper {
         for (let wrapper of itemWrappers) {
             var item = await this.getItem(wrapper);
       
-            appendFile(`./data/${this.categorie}.csv`, `\n${++this.id},${this.properties.map(x => selectors[x]).join(",")}`, function (err) {
+            appendFile(`./data/${this.categorie}.csv`, `\n${++this.id},${this.properties.map(prop => item[prop]).join(",")}`, function (err) {
                 if (err) console.log(err);
             });
         }
     }
     
     async getItem(wrapper) {
-        let item = await this.page.evaluate((wrapper, properties) => {
+        let item = await this.page.evaluate((wrapper, properties, prefix) => {
             var item = {}
           
             for (var prop of properties) {
-                debugger;
-                item[prop] = window[prop](wrapper);
+                item[prop] = window[(prefix + prop)](wrapper);
             }
 
             return item;
-        }, wrapper, this.properties);
+        }, wrapper, this.properties, this.funcPrefix);
     
         return item;
     }
