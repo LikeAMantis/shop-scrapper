@@ -1,6 +1,6 @@
 import pkg from 'puppeteer';
 import { appendFile } from 'fs';
-import { myFunc } from "test.js"
+import myFunc from './test.js';
 
 export default class Scrapper {
     constructor(selectorStrings, selectors) {
@@ -19,8 +19,8 @@ export default class Scrapper {
     }
 
     async openBrowser() {
-        this.browser = await pkg.launch({ headless: true, devtools: false, args: [`--window-size=1920,1080`], defaultViewport: false });
-        this.page = await this.browser.newPage();   
+        this.browser = await pkg.launch({ headless: false, devtools: true, args: [`--window-size=1920,1080`], defaultViewport: false });
+        this.page = await this.browser.newPage();
     }
 
     async goToPage(url) {
@@ -32,16 +32,15 @@ export default class Scrapper {
         }
 
         await this.page.evaluate((selectors, prefix) => {
-
             for (var key in selectors) {
                 var funcStr = "return " + selectors[key];
                 window[(prefix + key)] = new Function(funcStr)();
             }
-        }, this.selectors, this.funcPrefix)
+        }, this.selectors, this.funcPrefix);
     }
 
     async getMultipleCategories() {
-        await myFunc();
+        await myFunc(this.selectorStrings.categories, this);
     }
 
     async getCategorie() {

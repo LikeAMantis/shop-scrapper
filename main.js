@@ -3,8 +3,8 @@ import Scrapper from './Scrapper.js'
 
 main();
 async function main() {
-    await sparScrapper();
-    // await billaScrapper();
+    // await sparScrapper();
+    await billaScrapper();
     // await matrixScrapper();
 }
 
@@ -23,7 +23,7 @@ async function sparScrapper() {
         },
     );
 
-    startScrapper(scrapper, "spar/spar_test", 'https://www.interspar.at/shop/lebensmittel/obst-gemuese/frischobst/c/F1-2/');
+    startScrapper(scrapper, "spar/spar_test", 'https://www.interspar.at/shop/lebensmittel/obst-gemuese/c/F1/');
 }
 
 
@@ -33,7 +33,7 @@ async function billaScrapper() {
         {
             categories: [
                 ".header__dropdown",
-                "assortment-navigation:nth-child(2) > div > div > ul > li:not(:nth-child(1)) button",
+                "assortment-navigation:nth-child(2) > div > div > ul > li:nth-child(2) button",
                 "nav.assortment-nav.assortment-nav--sub > assortment-navigation > div > div > ul:not(:nth-child(1)) button",
                 "#navigation > div > div.assortment-nav__subimg-container.flex.bgi.-no-r > nav.assortment-nav.ng-scope > assortment-navigation > div > div > ul > li:nth-child(1) > a",
             ],
@@ -84,6 +84,7 @@ async function startScrapper(scrapper, filePath, url) {
     scrapper.createCSV(filePath);
     await scrapper.openBrowser();
     await scrapper.goToPage(url);
+    // await scrapper.getMultipleCategories();
     await scrapper.getCategorie();
-    await scrapper.closeBrowser();
+    // await scrapper.closeBrowser();
 }
