@@ -20,27 +20,16 @@ export default class Scrapper {
 
     async openBrowser() {
         this.browser = await pkg.launch({ headless: false, devtools: true, args: [`--window-size=1920,1080`], defaultViewport: false });
-        this.page = await this.browser.newPage();
+        this.page = await this.browser.newPage();   
     }
 
     async goToPage(url) {
         await this.page.goto(url);
-
-        // Setup Functions
-        for (var key in this.selectors) {
-            this.selectors[key] = this.selectors[key].toString();
-        }
-
-        await this.page.evaluate((selectors, prefix) => {
-            for (var key in selectors) {
-                var funcStr = "return " + selectors[key];
-                window[(prefix + key)] = new Function(funcStr)();
-            }
-        }, this.selectors, this.funcPrefix);
+        // await this.setUpFunctions();
     }
 
     async getMultipleCategories() {
-        await myFunc(this.selectorStrings.categories, this);
+        await myFunc.bind(this)();
     }
 
     async getCategorie() {
@@ -58,10 +47,11 @@ export default class Scrapper {
                 break;
             }
         }
-        console.log("Finished!");
+        console.log("✔ Finished!");
     };
-    
+
     async getPage() {
+        await this.setUpFunctions();
         console.log("Scroll");
         await this.page.evaluate(async () => {
             const distance = 250;
@@ -71,7 +61,7 @@ export default class Scrapper {
                 await new Promise(resolve => { setTimeout(resolve, delay); });
             }
         })
-        await this.page.waitForTimeout(500);
+        await this.page.waitForTimeout(1000);
         
         console.log("scrapping Page...");
         var itemWrappers = await this.page.$$(this.selectorStrings.itemWrappers);
@@ -83,6 +73,19 @@ export default class Scrapper {
                 if (err) console.log(err);
             });
         }
+    }
+
+    async setUpFunctions() {
+        for (var key in this.selectors) {
+            this.selectors[key] = this.selectors[key].toString();
+        }
+
+        await this.page.evaluate((selectors, prefix) => {
+            for (var key in selectors) {
+                var funcStr = "return " + selectors[key];
+                window[(prefix + key)] = new Function(funcStr)();
+            }
+        }, this.selectors, this.funcPrefix);
     }
     
     async getItem(wrapper) {

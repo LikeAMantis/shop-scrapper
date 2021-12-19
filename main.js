@@ -33,7 +33,7 @@ async function billaScrapper() {
         {
             categories: [
                 ".header__dropdown",
-                "assortment-navigation:nth-child(2) > div > div > ul > li:nth-child(2) button",
+                "assortment-navigation:nth-child(2) > div > div > ul > li:nth-child(4) button",
                 "nav.assortment-nav.assortment-nav--sub > assortment-navigation > div > div > ul:not(:nth-child(1)) button",
                 "#navigation > div > div.assortment-nav__subimg-container.flex.bgi.-no-r > nav.assortment-nav.ng-scope > assortment-navigation > div > div > ul > li:nth-child(1) > a",
             ],
@@ -51,7 +51,7 @@ async function billaScrapper() {
         },
     );
 
-    await startScrapper(scrapper, "billa/billa_test", 'https://shop.billa.at/warengruppe/getraenke/spirituosen/B2-35')
+    await startScrapper(scrapper, "billa/getraenke", 'https://shop.billa.at/')
 }
 
 
@@ -84,7 +84,6 @@ async function startScrapper(scrapper, filePath, url) {
     scrapper.createCSV(filePath);
     await scrapper.openBrowser();
     await scrapper.goToPage(url);
-    // await scrapper.getMultipleCategories();
-    await scrapper.getCategorie();
-    // await scrapper.closeBrowser();
+    await scrapper.getMultipleCategories();
+    await scrapper.closeBrowser();
 }
