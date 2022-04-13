@@ -1,44 +1,56 @@
-import pkg, { Browser, Page } from "puppeteer";
-import { appendFile } from "fs";
-const { myFunc } = require("./Functions.js");
-
-interface SelectorStrings {
-    categories?: string[];
-    itemWrappers: string;
-    nextBtn: string;
-}
+import pkg, { Browser, ElementHandle, Page } from "puppeteer";
+import { appendFile, writeFile } from "fs";
+import { PropSelectors, SelectorStrings } from "..";
+const { iterAllCategories } = require("./Functions.js");
 
 export default class Scrapper {
     name: string;
     selectorStrings: SelectorStrings;
-    selectors;
-    properties: string[];
+    propSelectors: PropSelectors;
+
+    props: string[];
     browser: Browser;
     page: Page;
+    funcPrefix: string = "getProp_";
+    id: number = 0;
+    category: string;
 
-    funcPrefix = "getProp_";
-    id = 0;
-    categorie = null;
-
+    // Constructor
     constructor(
         name: string,
         selectorStrings: SelectorStrings,
-        selectors: object
+        propSelectors: PropSelectors
     ) {
         this.name = name;
         this.selectorStrings = selectorStrings;
-        this.selectors = selectors;
-        this.properties = Object.keys(selectors);
+        this.propSelectors = propSelectors;
+        this.props = Object.keys(propSelectors);
     }
 
-    #createCSV(categorie) {
-        if (categorie === this.categorie) return;
+    // Public Methods
+    public async scrapAllCategories(url: string, createCSVIndex: number) {
+        await this.openBrowser();
+        await this.goToPage(url);
+        await this.getMultipleCategories(createCSVIndex);
+        await this.closeBrowser();
+    }
 
-        this.categorie = categorie;
-        appendFile(
-            `./data/${this.categorie}.csv`,
+    public async scrapSingleCategory(url: string, category: string) {
+        await this.openBrowser();
+        await this.goToPage(url);
+        await this.getCategorie(category);
+        await this.closeBrowser();
+    }
+
+    // Private Methods
+    private createCSV(category: string) {
+        if (category === this.category) return;
+
+        this.category = category;
+        writeFile(
+            `./data/${this.category}.csv`,
             "Id," +
-                this.properties
+                this.props
                     .map((x) => x[0].toUpperCase() + x.substr(1))
                     .join(","),
             function (err) {
@@ -47,29 +59,26 @@ export default class Scrapper {
         );
     }
 
-    async openBrowser() {
+    private async openBrowser() {
         this.browser = await pkg.launch({
             headless: false,
             devtools: false,
-            args: [`--window-size=1920,1080`],
-            defaultViewport: {
-                width: 1920,
-                height: 1080,
-            },
+            args: [`--window-size=1280,720`],
+            defaultViewport: null,
         });
         this.page = await this.browser.newPage();
     }
 
-    async goToPage(url) {
+    private async goToPage(url: string) {
         await this.page.goto(url);
     }
 
-    async getMultipleCategories(createCSVIndex) {
-        await myFunc(this, createCSVIndex);
+    private async getMultipleCategories(createCSVIndex) {
+        await iterAllCategories(this, createCSVIndex);
     }
 
-    async getCategorie(categorie) {
-        this.#createCSV(`${this.name}/${categorie}`);
+    private async getCategorie(categorie: string) {
+        this.createCSV(`${this.name}/${categorie}`);
         var counter = 0;
         while (true) {
             console.log("Page " + ++counter);
@@ -90,7 +99,7 @@ export default class Scrapper {
         console.log("✔ Finished!\n");
     }
 
-    async getPage() {
+    private async getPage() {
         await this.setUpFunctions();
 
         console.log("Scroll");
@@ -123,7 +132,7 @@ export default class Scrapper {
         await this.page.waitForNetworkIdle({ idleTime: 1000 });
 
         console.log("scrapping Page..");
-        var itemWrappers = await this.page.$$(
+        var itemWrappers: ElementHandle[] = await this.page.$$(
             this.selectorStrings.itemWrappers
         );
 
@@ -132,58 +141,60 @@ export default class Scrapper {
                 var item = await this.getItem(wrapper);
 
                 appendFile(
-                    `./data/${this.categorie}.csv`,
-                    `\n${++this.id},${this.properties
+                    `./data/${this.category}.csv`,
+                    `\n${++this.id},${this.props
                         .map((prop) => item[prop])
                         .join(",")}`,
                     function (err) {
-                        if (err) console.log(err);
+                        if (err) console.log("Append File Error", err);
                     }
                 );
             } catch (err) {
-                console.log("Proplem with get Item!");
+                console.log("Proplem with get Item!", err);
             }
         }
     }
 
-    async setUpFunctions() {
-        for (var key in this.selectors) {
-            this.selectors[key] = this.selectors[key].toString();
+    private async setUpFunctions() {
+        for (var key in this.propSelectors) {
+            this.propSelectors[key] = this.propSelectors[key].toString();
         }
 
+        const propSelectors: any = this.propSelectors;
         await this.page.evaluate(
-            (selectors, prefix) => {
-                for (var key in selectors) {
-                    var funcStr = "return " + selectors[key];
+            (propSelectors, prefix) => {
+                for (var key in propSelectors) {
+                    var funcStr = "return " + propSelectors[key];
                     window[prefix + key] = new Function(funcStr)();
                 }
             },
-            this.selectors,
+            propSelectors,
             this.funcPrefix
         );
     }
 
-    async getItem(wrapper) {
+    private async getItem(wrapper: ElementHandle) {
         let item = await this.page.evaluate(
-            (wrapper, properties, prefix) => {
-                var window: any;
+            (wrapper, props, prefix) => {
+                const window: any = globalThis.window;
+
                 var item = {};
 
-                for (var prop of properties) {
+                for (var prop of props) {
                     item[prop] = window[prefix + prop](wrapper);
                 }
 
                 return item;
             },
             wrapper,
-            this.properties,
+            this.props,
             this.funcPrefix
         );
 
         return item;
     }
 
-    async closeBrowser() {
+    private async closeBrowser() {
         await this.browser.close();
     }
 }
