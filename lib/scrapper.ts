@@ -1,19 +1,40 @@
-import pkg, { Browser, ElementHandle, Page } from "puppeteer";
+import pkg, {
+    Browser,
+    BrowserConnectOptions,
+    BrowserLaunchArgumentOptions,
+    ElementHandle,
+    LaunchOptions,
+    Page,
+} from "puppeteer";
 import { appendFile, writeFile } from "fs";
-import { PropSelectors, SelectorStrings } from "..";
-const { iterAllCategories } = require("./Functions.js");
+import { PropSelectors, SelectorStrings, Wait } from "./types";
+import { iterAllCategories } from "./functions";
+
+
+
+
 
 export default class Scrapper {
-    name: string;
-    selectorStrings: SelectorStrings;
-    propSelectors: PropSelectors;
+    static launchOptions: LaunchOptions &
+        BrowserLaunchArgumentOptions &
+        BrowserConnectOptions;
 
     props: string[];
-    browser: Browser;
+    selectorStrings: SelectorStrings;
     page: Page;
-    funcPrefix: string = "getProp_";
-    id: number = 0;
-    category: string;
+
+    private browser: Browser;
+    private name: string;
+    private propSelectors: PropSelectors;
+    private funcPrefix: string = "getProp_";
+    private id: number = 0;
+    private _category: string;
+    private set category(value: string) {
+        this._category = value.toLowerCase();
+    }
+    private get category() {
+        return this._category;
+    }
 
     // Constructor
     constructor(
@@ -28,18 +49,35 @@ export default class Scrapper {
     }
 
     // Public Methods
-    public async scrapAllCategories(url: string, createCSVIndex: number) {
+    public async scrapAllCategories(
+        url: string,
+        createCSVIndex: number,
+        wait?: Wait
+    ) {
         await this.openBrowser();
         await this.goToPage(url);
-        await this.getMultipleCategories(createCSVIndex);
+        await this.getMultipleCategories(createCSVIndex, wait);
         await this.closeBrowser();
     }
 
-    public async scrapSingleCategory(url: string, category: string) {
+    public async scrapCategory(
+        url: string,
+        category: string,
+        wait?: Wait
+    ) {
         await this.openBrowser();
         await this.goToPage(url);
-        await this.getCategorie(category);
+        await this.page.waitForSelector(this.selectorStrings.itemWrappers);
+        await this.getCategorie(category, wait);
         await this.closeBrowser();
+    }
+
+    public async scrapPage(url: string, fileName: string) {
+        this.createCSV(fileName);
+        await this.openBrowser();
+        await this.goToPage(url);
+        await this.page.waitForSelector(this.selectorStrings.itemWrappers);
+        await this.getPage();
     }
 
     // Private Methods
@@ -48,7 +86,7 @@ export default class Scrapper {
 
         this.category = category;
         writeFile(
-            `./data/${this.category}.csv`,
+            `./data/${this.name}/${this.category}.csv`,
             "Id," +
                 this.props
                     .map((x) => x[0].toUpperCase() + x.substr(1))
@@ -60,12 +98,7 @@ export default class Scrapper {
     }
 
     private async openBrowser() {
-        this.browser = await pkg.launch({
-            headless: false,
-            devtools: false,
-            args: [`--window-size=1280,720`],
-            defaultViewport: null,
-        });
+        this.browser = await pkg.launch(Scrapper.launchOptions);
         this.page = await this.browser.newPage();
     }
 
@@ -73,38 +106,42 @@ export default class Scrapper {
         await this.page.goto(url);
     }
 
-    private async getMultipleCategories(createCSVIndex) {
-        await iterAllCategories(this, createCSVIndex);
+    private async getMultipleCategories(createCSVIndex: number, wait: Wait) {
+        await iterAllCategories(this, createCSVIndex, wait);
     }
 
-    private async getCategorie(categorie: string) {
-        this.createCSV(`${this.name}/${categorie}`);
-        var counter = 0;
+    async getCategorie(categorie: string, wait?: Wait) {
+        wait = wait ? wait : (page) => page.waitForNavigation();
+
+        this.createCSV(categorie);
+        var counter = 1;
         while (true) {
-            console.log("Page " + ++counter);
+            console.log("Page " + counter++);
             await this.getPage();
 
             try {
                 await Promise.all([
-                    this.page.waitForNavigation(),
+                    wait(this.page),
+                    this.page.waitForSelector(this.selectorStrings.itemWrappers),
                     this.page.evaluate(
                         (nextBtn) => document.querySelector(nextBtn).click(),
                         this.selectorStrings.nextBtn
                     ),
                 ]);
             } catch (error) {
+                // console.log("error");
                 break;
             }
         }
+        this.id = 0;
         console.log("✔ Finished!\n");
     }
 
     private async getPage() {
         await this.setUpFunctions();
 
-        console.log("Scroll");
-        await this.page.evaluate(async () => {
-            // Scroll down
+        console.log("scroll");
+        await this.page.evaluate(async (itemWrappers) => {
             const distance = 200;
             const delay = 200;
             while (
@@ -119,19 +156,26 @@ export default class Scrapper {
 
             // Await all Image loaded
             await Promise.all(
-                Array.from(document.querySelectorAll("img"), (img) => {
-                    if (img.complete) return;
+                Array.from(
+                    document.querySelectorAll(`${itemWrappers} img`),
+                    (img: any) => {
+                        if (img.complete && img.naturalHeight !== 0) return;
 
-                    return new Promise((resolve, reject) => {
-                        img.addEventListener("load", resolve);
-                        img.addEventListener("error", reject);
-                    });
-                })
+                        return new Promise((resolve, reject) => {
+                            img.addEventListener("load", resolve);
+                            img.addEventListener("error", reject);
+                        });
+                    }
+                )
             );
-        });
-        await this.page.waitForNetworkIdle({ idleTime: 1000 });
+        }, this.selectorStrings.itemWrappers);
 
-        console.log("scrapping Page..");
+        await this.scrapping();
+    }
+
+    private async scrapping() {
+        console.log("scrapping");
+
         var itemWrappers: ElementHandle[] = await this.page.$$(
             this.selectorStrings.itemWrappers
         );
@@ -141,12 +185,13 @@ export default class Scrapper {
                 var item = await this.getItem(wrapper);
 
                 appendFile(
-                    `./data/${this.category}.csv`,
+                    `./data/${this.name}/${this.category}.csv`,
                     `\n${++this.id},${this.props
                         .map((prop) => item[prop])
                         .join(",")}`,
                     function (err) {
-                        if (err) console.log("Append File Error", err);
+                        if (err)
+                            console.log("Append File Error", err);
                     }
                 );
             } catch (err) {

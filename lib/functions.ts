@@ -1,4 +1,14 @@
-export async function iterAllCategories(context, createCSVIndex = null) {
+import { Wait } from "./types";
+import Scrapper from "./Scrapper";
+
+
+
+
+export async function iterAllCategories(
+    context: Scrapper,
+    createCSVIndex = null,
+    wait: Wait
+) {
     const containers = context.selectorStrings.categories;
     var rowIndex = [];
     var rowLength = [];
@@ -11,7 +21,7 @@ export async function iterAllCategories(context, createCSVIndex = null) {
         z = rowIndex.length - 1;
         await iter();
         await context.page.waitForNavigation();
-        await context.getCategorie(categorieText);
+        await context.getCategorie(categorieText, wait);
 
         rowIndex[z]++;
         while (rowIndex[z] >= rowLength[z]) {
@@ -47,4 +57,16 @@ export async function iterAllCategories(context, createCSVIndex = null) {
         y = 0;
     }
     console.log("✔✔ Finished All Categories!");
+}
+
+export function logMethods<T extends Object>(object: T): T {
+    const handler = {
+        get: (target: Object, p: string) => {
+            if (typeof target[p] == "function" && p !== "getItem") {
+                console.log("->", p);
+            }
+            return target[p];
+        },
+    };
+    return new Proxy<T>(object, handler);
 }
