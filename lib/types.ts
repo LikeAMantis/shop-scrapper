@@ -1,7 +1,7 @@
 import { Page } from "puppeteer";
 
 export interface SelectorStrings {
-    itemWrappers: string;
+    itemCard: string;
     categories?: string[];
     nextBtn?: string;
 }

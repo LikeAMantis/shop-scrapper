@@ -8,11 +8,7 @@ import pkg, {
 } from "puppeteer";
 import { appendFile, writeFile } from "fs";
 import { PropSelectors, SelectorStrings, Wait } from "./types";
-import { iterAllCategories } from "./functions";
-
-
-
-
+import { iterAllCategories, logMethods } from "./functions";
 
 export default class Scrapper {
     static launchOptions: LaunchOptions &
@@ -51,37 +47,36 @@ export default class Scrapper {
     // Public Methods
     public async scrapAllCategories(
         url: string,
-        createCSVIndex: number,
+        createCSVIndex?: number,
         wait?: Wait
     ) {
         await this.openBrowser();
         await this.goToPage(url);
+                                 await this.page.waitForSelector(this.selectorStrings.categories[0]);
         await this.getMultipleCategories(createCSVIndex, wait);
         await this.closeBrowser();
     }
 
-    public async scrapCategory(
-        url: string,
-        category: string,
-        wait?: Wait
-    ) {
+    public async scrapCategory(url: string, category: string, wait?: Wait) {
+        this.writeCSV(category)
         await this.openBrowser();
         await this.goToPage(url);
-        await this.page.waitForSelector(this.selectorStrings.itemWrappers);
-        await this.getCategorie(category, wait);
+        await this.page.waitForSelector(this.selectorStrings.itemCard);
+        await this.getCategorie(wait);
         await this.closeBrowser();
     }
 
     public async scrapPage(url: string, fileName: string) {
-        this.createCSV(fileName);
+        this.writeCSV(fileName);
         await this.openBrowser();
         await this.goToPage(url);
-        await this.page.waitForSelector(this.selectorStrings.itemWrappers);
+        await this.page.waitForSelector(this.selectorStrings.itemCard);
         await this.getPage();
+        await this.closeBrowser();
     }
 
     // Private Methods
-    private createCSV(category: string) {
+    writeCSV(category: string) {
         if (category === this.category) return;
 
         this.category = category;
@@ -110,10 +105,10 @@ export default class Scrapper {
         await iterAllCategories(this, createCSVIndex, wait);
     }
 
-    async getCategorie(categorie: string, wait?: Wait) {
+    async getCategorie(wait?: Wait) {
         wait = wait ? wait : (page) => page.waitForNavigation();
 
-        this.createCSV(categorie);
+        // this.writeCSV(categorie);
         var counter = 1;
         while (true) {
             console.log("Page " + counter++);
@@ -122,7 +117,9 @@ export default class Scrapper {
             try {
                 await Promise.all([
                     wait(this.page),
-                    this.page.waitForSelector(this.selectorStrings.itemWrappers),
+                    this.page.waitForSelector(
+                        this.selectorStrings.itemCard
+                    ),
                     this.page.evaluate(
                         (nextBtn) => document.querySelector(nextBtn).click(),
                         this.selectorStrings.nextBtn
@@ -155,20 +152,20 @@ export default class Scrapper {
             }
 
             // Await all Image loaded
-            await Promise.all(
-                Array.from(
-                    document.querySelectorAll(`${itemWrappers} img`),
-                    (img: any) => {
-                        if (img.complete && img.naturalHeight !== 0) return;
+            // await Promise.all(
+            //     Array.from(
+            //         document.querySelectorAll(`${itemWrappers} img`),
+            //         (img: any) => {
+            //             if (img.complete && img.naturalHeight !== 0) return;
 
-                        return new Promise((resolve, reject) => {
-                            img.addEventListener("load", resolve);
-                            img.addEventListener("error", reject);
-                        });
-                    }
-                )
-            );
-        }, this.selectorStrings.itemWrappers);
+            //             return new Promise((resolve, reject) => {
+            //                 img.addEventListener("load", resolve);
+            //                 img.addEventListener("error", reject);
+            //             });
+            //         }
+            //     )
+            // );
+        }, this.selectorStrings.itemCard);
 
         await this.scrapping();
     }
@@ -177,7 +174,7 @@ export default class Scrapper {
         console.log("scrapping");
 
         var itemWrappers: ElementHandle[] = await this.page.$$(
-            this.selectorStrings.itemWrappers
+            this.selectorStrings.itemCard
         );
 
         for (let wrapper of itemWrappers) {
@@ -190,8 +187,7 @@ export default class Scrapper {
                         .map((prop) => item[prop])
                         .join(",")}`,
                     function (err) {
-                        if (err)
-                            console.log("Append File Error", err);
+                        if (err) console.log("Append File Error", err);
                     }
                 );
             } catch (err) {
