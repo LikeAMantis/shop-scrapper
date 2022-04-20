@@ -48,21 +48,21 @@ export default class Scrapper {
     public async scrapAllCategories(
         url: string,
         createCSVIndex?: number,
-        wait?: Wait
+        waitNextPage?: Wait
     ) {
         await this.openBrowser();
         await this.goToPage(url);
-                                 await this.page.waitForSelector(this.selectorStrings.categories[0]);
-        await this.getMultipleCategories(createCSVIndex, wait);
+        await this.page.waitForSelector(this.selectorStrings.categories[0]);
+        await this.getMultipleCategories(createCSVIndex, waitNextPage);
         await this.closeBrowser();
     }
 
-    public async scrapCategory(url: string, category: string, wait?: Wait) {
+    public async scrapCategory(url: string, category: string, waitNextPage?: Wait) {
         this.writeCSV(category)
         await this.openBrowser();
         await this.goToPage(url);
         await this.page.waitForSelector(this.selectorStrings.itemCard);
-        await this.getCategorie(wait);
+        await this.getCategorie(waitNextPage);
         await this.closeBrowser();
     }
 
@@ -152,19 +152,26 @@ export default class Scrapper {
             }
 
             // Await all Image loaded
-            // await Promise.all(
-            //     Array.from(
-            //         document.querySelectorAll(`${itemWrappers} img`),
-            //         (img: any) => {
-            //             if (img.complete && img.naturalHeight !== 0) return;
+            const timeout = 3000;
+            Promise.any([
+                // max timeout
+                new Promise((resolve) => {
+                    setTimeout(resolve, timeout);
+                }),
+                Promise.all(
+                    Array.from(
+                        document.querySelectorAll(`${itemWrappers} img`),
+                        (img: any) => {
+                            if (img.complete && img.naturalHeight !== 0) return;
 
-            //             return new Promise((resolve, reject) => {
-            //                 img.addEventListener("load", resolve);
-            //                 img.addEventListener("error", reject);
-            //             });
-            //         }
-            //     )
-            // );
+                            return new Promise((resolve, reject) => {
+                                img.addEventListener("load", resolve);
+                                img.addEventListener("error", reject);
+                            });
+                        }
+                    )
+                ),
+            ]);
         }, this.selectorStrings.itemCard);
 
         await this.scrapping();
@@ -191,7 +198,7 @@ export default class Scrapper {
                     }
                 );
             } catch (err) {
-                console.log("Proplem with get Item!", err);
+                console.log("Proplem with get Item!");
             }
         }
     }

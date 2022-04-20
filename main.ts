@@ -2,6 +2,7 @@ import { logMethods } from "./lib/functions";
 import Scrapper from "./lib/Scrapper";
 
 async function main() {
+    // billaScrapper.scrapAllCategories("https://shop.billa.at/", 1);
     hoferScrapper.scrapAllCategories(
         "https://www.roksh.at/hofer/anfangsseite",
         1,
@@ -23,13 +24,17 @@ var hoferScrapper = new Scrapper(
             "app-root > app-header > nav > div.navbar-content.m-auto > div.row.category-row.provider-header .navbar-category-item-container.provider-header > a",
             ".category-card a",
             "body > app-root > div > app-product-list-new > div > app-product-list-header > div.header-text-container.position-relative.text-white.pt-4.pt-lg-5.mb-lg-5.mb-2 > div.row.container-magrgin.d-none.d-lg-flex.ng-star-inserted > app-category-card a",
+            "body > app-root > div > app-product-list-new > div > app-product-list-header > div.header-text-container.position-relative.text-white.pt-4.pt-lg-5.mb-lg-5.mb-2 > div.row.container-magrgin.d-none.d-lg-flex.ng-star-inserted > app-category-card a",
         ],
-        itemCard: "div.col.ng-star-inserted",
+        itemCard: "app-product-list-new > div > div > div.ng-star-inserted",
         nextBtn: "",
     },
     {
         name: (wrapper) =>
-            wrapper.querySelector('span[itemprop="name"]').textContent.replaceAll(",", "").trim(),
+            wrapper
+                .querySelector('span[itemprop="name"]')
+                .textContent.replaceAll(",", "")
+                .trim(),
         price: (wrapper) =>
             wrapper
                 .querySelector('span[itemprop="price"]')

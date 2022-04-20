@@ -1,6 +1,7 @@
 import { Wait } from "./types";
 import Scrapper from "./Scrapper";
 import { nextTick } from "process";
+import { ElementHandle } from "puppeteer";
 
 export async function iterAllCategories(
     scrapper: Scrapper,
@@ -8,37 +9,40 @@ export async function iterAllCategories(
     wait: Wait
 ) {
     const containers = scrapper.selectorStrings.categories;
-    var rowIndex = [];
-    var rowLength = [];
-    for (var i = 0; i < containers.length; i++) rowIndex.push(0);
-    var z = rowIndex.length - 1;
-    var y = 0;
+    var cDepthIndexes = Array(containers.length).fill(
+        0,
+        0,
+        containers.length
+    );
+    var depthCount = [];
+    var depth = cDepthIndexes.length - 1;
     var prevText: string;
     var pathLog: string[];
+    var y = 0;
 
-    while (z >= 0) {
-        z = rowIndex.length - 1;
+    while (depth >= 0) {
+        depth = cDepthIndexes.length - 1;
 
-        if (await menuNavigation()) {
-            // await scrapper.page.waitForNavigation();
-            await scrapper.page.waitForTimeout(3000);
-        } else {
-            await scrapper.page.waitForNetworkIdle({ idleTime: 1000 });
-        }
+        await menuNavigation();
+        await scrapper.page.waitForNetworkIdle({idleTime: 1000, timeout: 300000});
+
         console.log(
             pathLog
-                .map((x, i) => x + (rowLength[i + 1] ? `(${rowLength[i + 1]})` : ""))
+                .map(
+                    (x, i) =>
+                        x + (depthCount[i + 1] ? `(${depthCount[i + 1]})` : "")
+                )
                 .join(" ➡  ")
         );
 
         await scrapper.getCategorie(wait);
 
-        rowIndex[z]++;
-        while (rowIndex[z] >= rowLength[z]) {
-            rowIndex[z] = 0;
-            z--;
-            if (z < 0) break;
-            rowIndex[z]++;
+        cDepthIndexes[depth]++;
+        while (cDepthIndexes[depth] >= depthCount[depth]) {
+            cDepthIndexes[depth] = 0;
+            depth--;
+            if (depth < 0) break;
+            cDepthIndexes[depth]++;
         }
     }
     console.log("✔✔ Finished All Categories!");
@@ -48,37 +52,38 @@ export async function iterAllCategories(
 
         while (y < containers.length) {
             var elements = await scrapper.page.$$(containers[y]);
-            rowLength[y] = elements.length;
+            depthCount[y] = elements.length;
 
-            var text = await scrapper.page.evaluate((element) => {
+            var categorieText = await scrapper.page.evaluate((element) => {
                 element.click();
                 return element.innerText;
-            }, elements[rowIndex[y]]);
+            }, elements[cDepthIndexes[y]]);
 
-            pathLog.push(text);
+            pathLog.push(categorieText);
 
-            if (y === createCSVIndex && text !== prevText) {
-                prevText = text;
-                scrapper.writeCSV(text);
+            if (y === createCSVIndex && categorieText !== prevText) {
+                prevText = categorieText;
+                scrapper.writeCSV(categorieText);
             }
 
             // Wait for next Element to exist
             if (y < containers.length - 1) {
                 try {
+                    await scrapper.page.waitForTimeout(1000);
                     await scrapper.page.waitForSelector(containers[y + 1], {
-                        timeout: 5000,
+                        timeout: 1000,
                     });
                 } catch (error) {
                     console.log("element not found");
-                    // continue;
+                    depth = y;
                     y = 0;
-                    return false;
+                    return;
                 }
             }
             y++;
         }
         y = 0;
-        return true;
+        return;
     }
 }
 
