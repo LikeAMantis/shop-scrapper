@@ -13,6 +13,14 @@ export interface PropSelectors {
     productUrl: PropFunc;
 }
 
+export interface ProductProps {
+    name: string; 
+    price: string; 
+    imgUrl: string; 
+    productUrl: string;
+    categoryId: string;
+}
+
 type PropFunc = (wrapper: any) => string | number;
 
 export type Wait = (page: Page) => Promise<any>;

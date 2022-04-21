@@ -229,7 +229,7 @@ export default class Scrapper {
                 var item = {};
 
                 for (var prop of props) {
-                    item[prop] = window[prefix + prop](wrapper);
+                    item[prop] = window[prefix + prop](wrapper).replace(",", "");
                 }
 
                 return item;
