@@ -21,7 +21,27 @@ export interface ProductProps {
     categoryId: string;
 }
 
+
 type PropFunc = (wrapper: any) => string | number;
 
 export type Wait = (page: Page) => Promise<any>;
 
+
+
+export type grocceryCategories =
+    "brot & gebäck" |
+	"fleisch, wurst & fisch" |
+	"getränke" |
+	"haushalt" |
+	"obst & gemüse" |
+    "süßes & salziges" |
+	"tiefkühlwaren" |
+	"tierbedarf" |
+	"pflege" |
+	"kühlwaren" |
+	"grundnahrunsmittel" |
+	"sonstiges";
+
+export interface CategoryReMap {
+    [prevCat: string]: grocceryCategories;
+}

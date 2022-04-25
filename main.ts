@@ -3,10 +3,15 @@ import Scrapper from "./lib/Scrapper";
 
 async function main() {
     // billaScrapper.scrapAllCategories("https://shop.billa.at/", 1);
-    hoferScrapper.scrapAllCategories(
-        "https://www.roksh.at/hofer/anfangsseite",
-        1,
-    );
+    // hoferScrapper.scrapAllCategories(
+    //     "https://www.roksh.at/hofer/anfangsseite",
+    //     1,
+    // );
+
+    for (const url of unimarktCategories) {
+        await unimarktScrapper.scrapCategory(url, /[a-z-]+$/.exec(url)[0])
+    }
+
 }
 
 Scrapper.launchOptions = {
@@ -15,6 +20,33 @@ Scrapper.launchOptions = {
     args: [`--window-size=1920,1080`],
     defaultViewport: null,
 };
+
+
+const unimarktCategories = [
+    "https://shop.unimarkt.at/tiefkuehl",
+    "https://shop.unimarkt.at/haushalt",
+    "https://shop.unimarkt.at/suesses-snacks",
+    "https://shop.unimarkt.at/lebensmittel",
+    "https://shop.unimarkt.at/getraenke",
+    "https://shop.unimarkt.at/brot-gebaeck",
+    "https://shop.unimarkt.at/fleisch-wurst",
+    "https://shop.unimarkt.at/kuehlprodukte",
+    "https://shop.unimarkt.at/obst-gemuese",
+]
+
+var unimarktScrapper = new Scrapper(
+    "unimarkt",
+    {
+        itemCard: ".articleListItem",
+    },
+    {
+        name: (wrapper) => wrapper.querySelector(".desc").innerText.replace("\n", " "),
+        price: (wrapper) => /\d+[.]\d+/.exec(wrapper.querySelector(".price").innerText)[0],
+        imgUrl: (wrapper) => wrapper.querySelector("img.lacyLoad").src,
+        productUrl: (wrapper) => wrapper.querySelector("a").href.substr(24),
+    }
+);
+
 
 
 var hoferScrapper = new Scrapper(
