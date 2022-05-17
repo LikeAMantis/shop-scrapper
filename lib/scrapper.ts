@@ -26,7 +26,7 @@ export default class Scrapper {
     private id: number = 0;
     private _category: string;
     private set category(value: string) {
-        this._category = value.toLowerCase();
+        this._category = value.toLowerCase().trim();
     }
     private get category() {
         return this._category;
@@ -57,8 +57,12 @@ export default class Scrapper {
         await this.closeBrowser();
     }
 
-    public async scrapCategory(url: string, category: string, waitNextPage?: Wait) {
-        this.writeCSV(category)
+    public async scrapCategory(
+        url: string,
+        category: string,
+        waitNextPage?: Wait
+    ) {
+        this.writeCSV(category);
         await this.openBrowser();
         await this.goToPage(url);
         await this.page.waitForSelector(this.selectorStrings.itemCard);
@@ -117,9 +121,7 @@ export default class Scrapper {
             try {
                 await Promise.all([
                     wait(this.page),
-                    this.page.waitForSelector(
-                        this.selectorStrings.itemCard
-                    ),
+                    this.page.waitForSelector(this.selectorStrings.itemCard),
                     this.page.evaluate(
                         (nextBtn) => document.querySelector(nextBtn).click(),
                         this.selectorStrings.nextBtn
@@ -153,25 +155,25 @@ export default class Scrapper {
 
             // Await all Image loaded
             const timeout = 3000;
-            Promise.any([
-                // max timeout
-                new Promise((resolve) => {
-                    setTimeout(resolve, timeout);
-                }),
-                Promise.all(
-                    Array.from(
-                        document.querySelectorAll(`${itemWrappers} img`),
-                        (img: any) => {
-                            if (img.complete && img.naturalHeight !== 0) return;
+            // Promise.any([
+            //     // max timeout
+            //     new Promise((resolve) => {
+            //         setTimeout(resolve, timeout);
+            //     }),
+            //     Promise.all(
+            //         Array.from(
+            //             document.querySelectorAll(`${itemWrappers} img`),
+            //             (img: any) => {
+            //                 if (img.complete && img.naturalHeight !== 0) return;
 
-                            return new Promise((resolve, reject) => {
-                                img.addEventListener("load", resolve);
-                                img.addEventListener("error", reject);
-                            });
-                        }
-                    )
-                ),
-            ]);
+            //                 return new Promise((resolve, reject) => {
+            //                     img.addEventListener("load", resolve);
+            //                     img.addEventListener("error", reject);
+            //                 });
+            //             }
+            //         )
+            //     ),
+            // ]);
         }, this.selectorStrings.itemCard);
 
         await this.scrapping();
@@ -229,7 +231,10 @@ export default class Scrapper {
                 var item = {};
 
                 for (var prop of props) {
-                    item[prop] = window[prefix + prop](wrapper).replaceAll(",", "");
+                    item[prop] = window[prefix + prop](wrapper).replaceAll(
+                        ",",
+                        ""
+                    );
                 }
 
                 return item;

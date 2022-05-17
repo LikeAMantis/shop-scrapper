@@ -69,7 +69,7 @@ export async function iterAllCategories(
             // Wait for next Element to exist
             if (y < containers.length - 1) {
                 try {
-                    await scrapper.page.waitForTimeout(250); // falls 2x hintereinander ein gleicher selektor kommt
+                    await scrapper.page.waitForTimeout(1000); // falls 2x hintereinander ein gleicher selektor kommt
                     await scrapper.page.waitForSelector(containers[y + 1], {
                         timeout: 1000,
                     });

@@ -3,14 +3,14 @@ import Scrapper from "./lib/Scrapper";
 
 async function main() {
     // billaScrapper.scrapAllCategories("https://shop.billa.at/", 1);
-    // hoferScrapper.scrapAllCategories(
-    //     "https://www.roksh.at/hofer/anfangsseite",
-    //     1,
-    // );
+    hoferScrapper.scrapAllCategories(
+        "https://www.roksh.at/hofer/anfangsseite",
+        1,
+    );
 
-    for (const url of unimarktCategories) {
-        await unimarktScrapper.scrapCategory(url, /[a-z-]+$/.exec(url)[0])
-    }
+    // for (const url of unimarktCategories) {
+    //     await unimarktScrapper.scrapCategory(url, /[a-z-]+$/.exec(url)[0])
+    // }
 
 }
 
@@ -72,7 +72,7 @@ var hoferScrapper = new Scrapper(
                 .querySelector('span[itemprop="price"]')
                 .textContent.trim()
                 .replace(",", "."),
-        imgUrl: (wrapper) => wrapper.querySelector("img").src,
+        imgUrl: (wrapper) => wrapper.querySelector("img.ng-star-inserted").src,
         productUrl: (wrapper) =>
             wrapper
                 .querySelector("a[href]")

@@ -19,6 +19,7 @@ export interface ProductProps {
     imgUrl: string; 
     productUrl: string;
     categoryId: string;
+    shopId: string;
 }
 
 
@@ -35,11 +36,11 @@ export type grocceryCategories =
 	"haushalt" |
 	"obst & gemüse" |
     "süßes & salziges" |
-	"tiefkühlwaren" |
-	"tierbedarf" |
+	"tiefkühl" |
+	"haustier" |
 	"pflege" |
 	"kühlwaren" |
-	"grundnahrunsmittel" |
+	"grundnahrungsmittel" |
 	"sonstiges";
 
 export interface CategoryReMap {
